@@ -1,5 +1,7 @@
 #include <ESP8266WiFi.h>
 #include "Credentials.h"
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 void setup() {
   Serial.begin(115200);
@@ -13,16 +15,19 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-//Testing a simple http request
-if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    http.begin("http://www.google.com");
-    int httpCode = http.GET();
+//Testing a HTTPs request
+  if (WiFi.status() == WL_CONNECTED) {
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure();
+
+    HTTPClient https;
+    https.begin(*client, "https://x8ki-letl-twmt.n7.xano.io/api:QgTMv-fR");
+    int httpCode = https.GET();
     if (httpCode > 0) {
-      String payload = http.getString();
+      String payload = https.getString();
       Serial.println(payload);
     }
-    http.end();
+    https.end();
   }
 }
 

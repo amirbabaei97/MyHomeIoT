@@ -3,7 +3,9 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include <Servo.h>
+#include <ESP8266WebServer.h>
 
+ESP8266WebServer server(80);
 Servo servo0;
 
 void setup() {
@@ -32,13 +34,19 @@ void setup() {
     }
     https.end();
   }
+
+   server.on("/servo", []() {
+    servo0.write(90); // Adjust angle as needed
+    delay(1000);
+    servo0.write(0);
+    server.send(200, "text/plain", "Servo moved");
+  });
+  server.begin();
+
   // Attach servos to their respective pins
   servo0.attach(16);
 }
 
 void loop() {
-  servo0.write(180); //play around with the velue to get the right angle - mine is 150 for TowerPro SG90
-  delay(1000);
-  servo0.write(0);
-  delay(1000);
+  server.handleClient();
 }

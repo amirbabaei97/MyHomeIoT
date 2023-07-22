@@ -5,8 +5,18 @@
 #include <Servo.h>
 #include <ESP8266WebServer.h>
 
-ESP8266WebServer server(80);
+// Create servo objects for each servo motor
 Servo servo0;
+Servo servo1;
+Servo servo2;
+Servo servo3;
+Servo servo4;
+Servo servo5;
+Servo servo6;
+Servo servo7;
+
+ESP8266WebServer server(80); // Create a web server on port 80
+
 
 void setup() {
   Serial.begin(115200);
@@ -44,9 +54,38 @@ void setup() {
   server.begin();
 
   // Attach servos to their respective pins
-  servo0.attach(16);
+  servo0.attach(16); 
+  servo1.attach(5);
+  servo2.attach(4);
+  servo3.attach(0);
+  servo4.attach(2);
+  servo5.attach(14);
+  servo6.attach(12);
+  servo7.attach(13);
 }
 
 void loop() {
-  server.handleClient();
+  for (int pos = 0; pos <= 180; pos += 20) { // goes from 0 degrees to 180 degrees
+    // in steps of 20 degrees
+    servo0.write(pos); // tell servo to go to position in variable 'pos'
+    servo1.write(pos);
+    servo2.write(pos);
+    servo3.write(pos);
+    servo4.write(pos);
+    servo5.write(pos);
+    servo6.write(pos);
+    servo7.write(pos);
+    delay(1000); // waits 1 sec for the servo to reach the position
+  }
+  for (int pos = 180; pos >= 0; pos -= 20) { // goes from 180 degrees to 0 degrees
+    servo0.write(pos);
+    servo1.write(pos);
+    servo2.write(pos);
+    servo3.write(pos);
+    servo4.write(pos);
+    servo5.write(pos);
+    servo6.write(pos);
+    servo7.write(pos);
+    delay(1000);
+  }
 }

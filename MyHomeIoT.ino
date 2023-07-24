@@ -4,6 +4,13 @@
 #include <WiFiClientSecure.h>
 #include <Servo.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Servo.h>
+#include <WiFiClient.h>
+
+WiFiClient client;
 
 // Create servo objects for each servo motor
 Servo servo0;
@@ -22,6 +29,39 @@ bool checkAuth() {
 }
 void handleRoot() {
   server.send(200, "text/plain", "You are logged in");
+}
+
+
+  void sendStateToAPI(String endpoint, bool state) {
+  if (WiFi.status() == WL_CONNECTED) {
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure(); // Ignore SSL certificate validation
+
+    HTTPClient https;
+    
+    String url = "https://x8ki-letl-twmt.n7.xano.io/api:QgTMv-fR" + endpoint;
+    if (https.begin(*client, url)) {  // HTTPS
+      https.addHeader("Content-Type", "application/json");
+      String jsonBody = "{\"State\":" + String(state ? "true" : "false") + "}";
+       Serial.println("url: " + url);
+      Serial.println("json to send: " + jsonBody);
+      int httpCode = https.POST(jsonBody);
+
+      if (httpCode > 0) {
+        String payload = https.getString();
+        Serial.println("http code: " + httpCode);
+        Serial.println("Response: " + payload);
+      } else {
+        Serial.printf("Error on HTTPS POST: %s\n", https.errorToString(httpCode).c_str());
+      }
+
+      https.end();
+    } else {
+      Serial.println("HTTPS Connection Failed");
+    }
+  } else {
+    Serial.println("Not connected to WiFi");
+  }
 }
 
 void setup() {
@@ -61,7 +101,7 @@ void setup() {
 }
 
 void loop() {
-    server.handleClient(); // Handle incoming client requests
+  server.handleClient(); // Handle incoming client requests
 }
 
 // Function to control a specific servo
@@ -96,6 +136,8 @@ void controlServo(int servoNumber, bool turnOn) {
 // turnOn: whether to turn the lamp on or off
 void lamp(int lampNumber, bool turnOn) {
     controlServo(lampNumber, turnOn);
+    // Sending state to API
+    sendStateToAPI("/lamp" + String(lampNumber), turnOn);
 }
 
 // Function to control the blinds
@@ -123,11 +165,68 @@ void blinds(int blindNumber, bool lowerBlinds) {
             controlServo(6, false);  // Turn on servo 6
         }
     }
+  // Sending state to API
+  String endpoint = "/blinds" + String(blindNumber);
+  sendStateToAPI(endpoint, lowerBlinds);
 }
 
 // Function to control the AC
 void acControl() {
-  controlServo(7, false); // Control AC using servo 7
+  if (WiFi.status() == WL_CONNECTED) {
+    std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
+    client->setInsecure(); // Ignore SSL certificate validation
+
+    HTTPClient https;
+    String urlGet = "https://x8ki-letl-twmt.n7.xano.io/api:QgTMv-fR/ac";
+
+    // GET Request
+    if (https.begin(*client, urlGet)) {
+      int httpCodeGet = https.GET();
+
+      if (httpCodeGet > 0) {
+        String payload = https.getString();
+        Serial.println("GET Response: " + payload);
+        
+        // Parse JSON response and toggle state
+        DynamicJsonDocument doc(1024);
+        deserializeJson(doc, payload);
+        bool currentState = doc["State"];
+        bool newState = !currentState;
+        controlServo(7, false); // Control AC using servo 7
+
+        https.end(); // End the GET request
+
+        // Delay before POST request
+        delay(500);
+
+        // POST Request
+        String urlPost = "https://x8ki-letl-twmt.n7.xano.io/api:QgTMv-fR/ac";
+        if (https.begin(*client, urlPost)) {
+          https.addHeader("Content-Type", "application/json");
+          String jsonBody = "{\"State\":" + String(newState ? "true" : "false") + "}";
+          int httpCodePost = https.POST(jsonBody);
+
+          if (httpCodePost > 0) {
+            String response = https.getString();
+            Serial.println("POST Response: " + response);
+          } else {
+            Serial.printf("Error on HTTPS POST: %s\n", https.errorToString(httpCodePost).c_str());
+          }
+
+          https.end(); // End the POST request
+        } else {
+          Serial.println("HTTPS POST Connection Failed");
+        }
+      } else {
+        Serial.printf("Error on HTTPS GET: %s\n", https.errorToString(httpCodeGet).c_str());
+      }
+
+    } else {
+      Serial.println("HTTPS GET Connection Failed");
+    }
+  } else {
+    Serial.println("Not connected to WiFi");
+  }
 }
 
 // Function to set up web server routes for controlling servos

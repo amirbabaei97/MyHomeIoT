@@ -1,2 +1,8 @@
 //for security reasons, this file is not included in the repository
 Credentials.h 
+
+//this file is used to store the workspace settings
+MyHomeIoT.code-workspace
+
+//MacOs generated file
+.DS_Store
